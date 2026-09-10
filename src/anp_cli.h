@@ -19,4 +19,12 @@ static inline uint32_t codSizeAlign4(uint32_t size)
 #define NUMBER_FROM_INTEGER_STRING_FMT_STR_LEN (64)
 #define LOB_BUFFER_SIZE (256)
 
-#endif  // ANCHOR_ANP_VAR_H
+/* NUMBER fetch mapping strategy (connect/SessionPool number_as) */
+typedef enum AnpNumberAs {
+    ANP_NUMBER_AS_DECIMAL = 0,  /* default */
+    ANP_NUMBER_AS_FLOAT   = 1,
+    ANP_NUMBER_AS_INT     = 2,
+    ANP_NUMBER_AS_STR     = 3
+} AnpNumberAs;
+
+#endif  // ANCHOR_ANP_CLI_H
