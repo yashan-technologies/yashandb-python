@@ -14,6 +14,7 @@ struct AnpSessionPool {
     PyObject* username;
     PyObject* dsn;
     PyObject* password;
+    AnpNumberAs numberAs;
 };
 
 extern PyTypeObject anchorPyTypeSessionPool;

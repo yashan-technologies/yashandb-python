@@ -1,6 +1,7 @@
 #include "anp_var.h"
 #include "datetime.h"
 #include "anp_exception.h"
+#include "anp_number_as.h"
 // #include "yacapi.h"
 
 PyTypeObject *anpPyTypeDate;
@@ -615,9 +616,11 @@ static PyObject *anpVarToPython(YapiConnect* hConn, AnpVar* var, uint32_t pos)
             break;
         case YAPI_TYPE_NUMBER:
         case YAPI_TYPE_NUMBER_FLOAT: {
-            PyObject* stringObj = PyUnicode_Decode(data, strlen(data), NULL, NULL);
-            result = PyObject_CallFunctionObjArgs((PyObject*)anpPyTypeDecimal, stringObj, NULL);
-            Py_DECREF(stringObj);
+            AnpNumberAs mode = ANP_NUMBER_AS_DECIMAL;
+            if (var->connection != NULL) {
+                mode = var->connection->numberAs;
+            }
+            result = anpConvertNumberText(mode, data);
             break;
         }
         case YAPI_TYPE_DATE:

@@ -1,6 +1,7 @@
 #include "anp_session_pool.h"
 #include "anp_exception.h"
 #include "anp_connection.h"
+#include "anp_number_as.h"
 
 static void anpSessionPoolFree(AnpSessionPool* pool)
 {
@@ -37,15 +38,23 @@ static PyObject* anpSessionPoolRepr(AnpSessionPool* pool)
 static int anpSessionPoolInit(AnpSessionPool* pool, PyObject* args, PyObject* keywordArgs)
 {
     const char * dsn, *user, *password;
-    static char* kwlist[] = {"user", "password", "dsn", "min", "max", "increment", "getmode", NULL};
+    static char* kwlist[] = {"user", "password", "dsn", "min", "max", "increment",
+                             "getmode", "number_as", NULL};
     uint32_t min = 1, max = 4, increment = 1, mode = 1, get_mode = 1;
-    if (!PyArg_ParseTupleAndKeywords(args, keywordArgs, "sss|iiii", kwlist, &user, &password, &dsn, &min, &max,
-                                     &increment, &get_mode)) {
+    PyObject *numberAsObj = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, keywordArgs, "sss|iiii$O", kwlist,
+                                     &user, &password, &dsn, &min, &max,
+                                     &increment, &get_mode, &numberAsObj)) {
         return -1;
     }
 
     if (get_mode != 1) {
         anpRaiseExceptionFromString(anpInterfaceErrorException, "get mode must be 1");
+        return -1;
+    }
+
+    pool->numberAs = ANP_NUMBER_AS_DECIMAL;
+    if (anpParseNumberAs(numberAsObj, &pool->numberAs) < 0) {
         return -1;
     }
 
@@ -114,6 +123,7 @@ static PyObject *anpConnectionGet(AnpSessionPool *pool, PyObject *args)
         return anpRaiseAndReturnNullException();
     }
     conn->hConnPool = pool->hConnPool;
+    conn->numberAs = pool->numberAs;
     return (PyObject*)conn;
 }
 
@@ -162,6 +172,11 @@ static PyObject* anpSessionPoolClose(AnpSessionPool* pool)
     Py_RETURN_NONE;
 }
 
+static PyObject *anpSessionPoolGetNumberAs(AnpSessionPool *pool, void *unused)
+{
+    return PyUnicode_FromString(anpNumberAsToString(pool->numberAs));
+}
+
 static PyMethodDef anpSessionPoolMethods[] = {
         { "close",    (PyCFunction) anpSessionPoolClose, METH_NOARGS },
         { "release",   (PyCFunction) anpConnectionRelease, METH_VARARGS | METH_KEYWORDS },
@@ -180,6 +195,7 @@ static PyMemberDef anpSessionPoolMembers[] = {
 };
 
 static PyGetSetDef anpSessionPoolCalcMembers[] = {
+    {"number_as", (getter) anpSessionPoolGetNumberAs, NULL, 0, 0},
     {NULL}
 };
 

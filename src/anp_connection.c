@@ -1,6 +1,7 @@
 #include "anp_connection.h"
 #include "anp_exception.h"
 #include "anp_cursor.h"
+#include "anp_number_as.h"
 #include "structmember.h"
 
 PyObject* anpNewConnection(PyTypeObject* type, PyObject* args, PyObject* keywordArgs)
@@ -94,12 +95,19 @@ static int anpConnectionSplitComponent(PyObject *sourceObj, const char *splitStr
 static int anpConnectionInit(AnpConnection *conn, PyObject *args,
                              PyObject *keywordArgs)
 {
-    PyObject *dsnObj, *userObj, *passwordObj;
+    PyObject *dsnObj, *userObj, *passwordObj, *numberAsObj;
     PyObject *beforePartObj, *afterPartObj;
-    static char* kwlist[] = {"dsn", "user", "password", NULL};
-    dsnObj = userObj = passwordObj = NULL;
+    static char* kwlist[] = {"dsn", "user", "password", "number_as", NULL};
+    dsnObj = userObj = passwordObj = numberAsObj = NULL;
     beforePartObj = afterPartObj = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, keywordArgs, "O|OO", kwlist, &dsnObj, &userObj, &passwordObj)) {
+    if (!PyArg_ParseTupleAndKeywords(args, keywordArgs, "O|OO$O", kwlist,
+                                     &dsnObj, &userObj, &passwordObj,
+                                     &numberAsObj)) {
+        return -1;
+    }
+
+    conn->numberAs = ANP_NUMBER_AS_DECIMAL;
+    if (anpParseNumberAs(numberAsObj, &conn->numberAs) < 0) {
         return -1;
     }
 
@@ -291,6 +299,11 @@ static int anpSetAutoCommit(AnpConnection *conn, PyObject *value, void *closure)
     return 0;
 }
 
+static PyObject *anpGetNumberAs(AnpConnection *conn, void *unused)
+{
+    return PyUnicode_FromString(anpNumberAsToString(conn->numberAs));
+}
+
 static PyObject *yaspyConnection_contextManagerEnter(AnpConnection *conn, PyObject* args)
 {
     if (!anpConnectionIsConnected(conn)) {
@@ -337,6 +350,7 @@ static PyMemberDef anpMembers[] = {
 
 static PyGetSetDef anpCalcMembers[] = {
     {"autocommit", (getter) anpGetAutoCommit, (setter)anpSetAutoCommit, 0, 0},
+    {"number_as", (getter) anpGetNumberAs, NULL, 0, 0},
     {NULL}
 };
 
