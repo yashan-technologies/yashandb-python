@@ -13,6 +13,7 @@ typedef struct {
     PyObject *dsn;
 
     bool autocommit;
+    AnpNumberAs numberAs;
 } AnpConnection;
 
 YapiResult anpRegistConnection(PyObject* module);
