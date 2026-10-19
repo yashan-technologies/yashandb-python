@@ -115,6 +115,8 @@ class TestCase(test_env.BaseTestCase):
         long_string = ""
         for row in rows:
             integer_value, lob = row
+            # NUMBER defaults to decimal.Decimal; chr() requires a plain int
+            integer_value = int(integer_value)
             if integer_value == 0:
                 self.assertEqual(len(lob), 0)
                 expected_value = ""
