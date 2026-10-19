@@ -48,7 +48,7 @@ class TestCase(test_base.TestBaseCase):
         )
         self.connection.commit()
         result = read(cursor, name)
-        self.assertEqual(result , [(d1.date(), d2)])
+        self.assertEqual(result , [(d1.replace(microsecond=0), d2)])
 
 
     def test_timedelta(self, name: str = "test_timedelta"):
@@ -239,7 +239,7 @@ class TestCase(test_base.TestBaseCase):
                     Decimal("1"),
                     "1",
                     "11111111-1111-1111-1111-111111111111",
-                    datetime.date(1111, 11, 11),
+                    datetime.datetime(1111, 11, 11),
                     datetime.datetime(1111, 11, 11, 11, 11, 11, 111000),
                     datetime.time(11, 11, 11, 111000),
                 ),
@@ -259,7 +259,7 @@ class TestCase(test_base.TestBaseCase):
                     Decimal("1E-15"),
                     None,
                     "33221100-5544-7766-9988-aabbccddeeff",
-                    datetime.date(1000, 1, 1),
+                    datetime.datetime(1000, 1, 1),
                     datetime.datetime(1000, 1, 1, 0, 0),
                     datetime.time(0, 0),
                 ),
@@ -470,7 +470,7 @@ class TestCase(test_base.TestBaseCase):
                     5.5,
                     6.6,
                     Decimal("7.0000000007"),
-                    datetime.date(2006, 1, 2),
+                    datetime.datetime(2006, 1, 2),
                     datetime.time(15, 4, 5),
                     datetime.datetime(2006, 1, 2, 15, 4, 5),
                     "+03-09",

@@ -123,9 +123,9 @@ class TestCase(test_env.BaseTestCase):
         "3709 - setting values on variables of type DB_TYPE_DATE"
         self._test_positive_set_and_get(yaspy.DATE,
                                         datetime.date(2017, 5, 6),
-                                        datetime.date(2017, 5, 6))
+                                        datetime.datetime(2017, 5, 6))
         value = datetime.datetime(2017, 5, 6, 9, 36, 0)
-        self._test_positive_set_and_get(yaspy.DATE, value, datetime.date(2017, 5, 6))
+        self._test_positive_set_and_get(yaspy.DATE, value, value)
         self._test_positive_set_and_get(yaspy.DATE, None, None)
         # self._test_negative_set_and_get(yaspy.DATE, 5)
 

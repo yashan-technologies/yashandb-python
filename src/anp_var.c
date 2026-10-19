@@ -626,7 +626,7 @@ static PyObject *anpVarToPython(YapiConnect* hConn, AnpVar* var, uint32_t pos)
         case YAPI_TYPE_DATE:
             date = (YapiDate *)data;
             yapiGetDateStruct(*date, &ds);
-            result =  PyDate_FromDate(ds.year, ds.month, ds.day);
+            result = PyDateTime_FromDateAndTime(ds.year, ds.month, ds.day, ds.hour, ds.minute, ds.second, ds.fraction);
             break;
         case YAPI_TYPE_SHORTTIME:
             time = (YapiShortTime *)data;

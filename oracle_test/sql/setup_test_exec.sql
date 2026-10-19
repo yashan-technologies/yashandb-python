@@ -164,7 +164,7 @@ create table &main_user..TestTempXML (
 -- ) nocompress
 -- /
 
-create table regress.TestTempTable (
+create table &main_user..TestTempTable (
     IntCol                              number(9) not null,
     StringCol                           varchar2(400),
     NumberCol                           number(25,2),

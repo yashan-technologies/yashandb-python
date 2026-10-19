@@ -191,8 +191,8 @@ class TestCase(test_env.BaseTestCase):
         "2512 - test binding (and fetching) universal rowids"
         self.cursor.execute("truncate table TestUniversalRowids")
         data = [
-            (decimal.Decimal(1), "ABC" * 75, datetime.date(2017, 4, 11)),
-            (decimal.Decimal(2), "DEF" * 80, datetime.date(2017, 4, 12))
+            (decimal.Decimal(1), "ABC" * 75, datetime.datetime(2017, 4, 11)),
+            (decimal.Decimal(2), "DEF" * 80, datetime.datetime(2017, 4, 12))
         ]
         for row in data:
             self.cursor.execute("""

@@ -114,7 +114,7 @@ class TestCase(test_base.TestBaseCase):
         bindDate = datetime.date(2023, 2, 7)
         cursor.execute("insert into test_bind_date values(?, ?)", (2, bindDate))
         cursor.execute("select * from test_bind_date")
-        expectedRow = (2, bindDate)
+        expectedRow = (2, datetime.datetime(bindDate.year, bindDate.month, bindDate.day))
         row = cursor.fetchone()
         self.assertEqual(expectedRow, row)
         cursor.execute("drop table if exists test_bind_date")

@@ -26,13 +26,12 @@ class TestCase(test_env.BaseTestCase):
         self.raw_data = []
         self.data_by_key = {}
         for i in range(1, 11):
-            time_tuple = (2002, 12, 9, 0, 0, 0, 0, 0, -1)
-            time_in_ticks = time.mktime(time_tuple) + i * 86400 + i * 8640
-            date_col = yaspy.DateFromTicks(int(time_in_ticks))
+            # DATE 列现在返回带时间的 datetime；期望值按 DB 实际存储的时间构造
+            base_dt = datetime.datetime(2002, 12, 9, 0, 0, 0)
+            date_col = base_dt + datetime.timedelta(days=i, seconds=i * 8640)
             if i % 2:
-                time_in_ticks = time.mktime(time_tuple) + i * 86400 * 2 + \
-                        i * 12960
-                nullable_col = yaspy.DateFromTicks(int(time_in_ticks))
+                nullable_col = base_dt + datetime.timedelta(days=i * 2,
+                                                            seconds=i * 12960)
             else:
                 nullable_col = None
             tuple = (decimal.Decimal(i), date_col, nullable_col)
@@ -62,7 +61,8 @@ class TestCase(test_env.BaseTestCase):
         var.setvalue(date_val)
         self.cursor.execute("select DATE(:1, 'YYYY-MM-DD') from dual", [var])
         result, = self.cursor.fetchone()
-        self.assertEqual(result, date_val)
+        self.assertEqual(result, datetime.datetime(date_val.year, date_val.month,
+                                                   date_val.day))
 
     @unittest.skip
     def test_1403_bind_date_after_string(self):
