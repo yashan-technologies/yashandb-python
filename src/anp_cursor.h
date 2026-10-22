@@ -9,6 +9,8 @@ typedef struct StAnpCursor {
     PyObject_HEAD
     YapiStmt* hStmt;
     AnpConnection *connection;
+    /* Next open cursor on connection->openCursors (intrusive list). */
+    struct StAnpCursor *nextCursor;
     // list of AnpVar's as bind parameters
     PyObject *bindVariables;
     PyObject* fetchVariables;

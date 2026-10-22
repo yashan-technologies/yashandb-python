@@ -142,6 +142,9 @@ static PyObject *anpConnectionRelease(AnpSessionPool *pool, PyObject* args, PyOb
         return NULL;
     }
 
+    /* Same as connection.close: invalidate cursors before GiveBack. */
+    anpConnectionInvalidateCursors(conn);
+
     YapiResult res;
     Py_BEGIN_ALLOW_THREADS
     res = yapiConnectionGiveBack(conn->hConn);

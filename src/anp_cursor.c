@@ -23,6 +23,8 @@ static int anpCursorInit(AnpCursor* cursor, PyObject* arguments, PyObject* keywo
     cursor->connection = connection;
     cursor->isOpen = 1;
     cursor->isFail = 0;
+    cursor->nextCursor = NULL;
+    anpConnectionRegisterCursor(connection, cursor);
 
     return 0;
 }
@@ -1028,6 +1030,7 @@ static PyObject* anpCursorClose(AnpCursor* cursor, PyObject* args)
         return NULL;
     }
 
+    anpConnectionUnregisterCursor(cursor->connection, cursor);
     if (cursor->hStmt != NULL) {
         yapiReleaseStmt(cursor->hStmt);
         cursor->hStmt = NULL;
@@ -1376,6 +1379,9 @@ static void anpCursorFree(AnpCursor* cursor)
 {
     Py_CLEAR(cursor->fetchVariables);
     Py_CLEAR(cursor->bindVariables);
+    if (cursor->connection != NULL) {
+        anpConnectionUnregisterCursor(cursor->connection, cursor);
+    }
     if (cursor->hStmt != NULL) {
         yapiReleaseStmt(cursor->hStmt);
         cursor->hStmt = NULL;

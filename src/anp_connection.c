@@ -9,9 +9,59 @@ PyObject* anpNewConnection(PyTypeObject* type, PyObject* args, PyObject* keyword
     return type->tp_alloc(type, 0);
 }
 
+void anpConnectionRegisterCursor(AnpConnection *conn, AnpCursor *cursor)
+{
+    if (conn == NULL || cursor == NULL) {
+        return;
+    }
+    cursor->nextCursor = conn->openCursors;
+    conn->openCursors = cursor;
+}
+
+void anpConnectionUnregisterCursor(AnpConnection *conn, AnpCursor *cursor)
+{
+    AnpCursor **pp;
+
+    if (conn == NULL || cursor == NULL) {
+        return;
+    }
+    pp = &conn->openCursors;
+    while (*pp != NULL) {
+        if (*pp == cursor) {
+            *pp = cursor->nextCursor;
+            cursor->nextCursor = NULL;
+            return;
+        }
+        pp = &(*pp)->nextCursor;
+    }
+}
+
+void anpConnectionInvalidateCursors(AnpConnection *conn)
+{
+    AnpCursor *cursor;
+    AnpCursor *next;
+
+    if (conn == NULL) {
+        return;
+    }
+    cursor = conn->openCursors;
+    conn->openCursors = NULL;
+    while (cursor != NULL) {
+        next = cursor->nextCursor;
+        cursor->nextCursor = NULL;
+        if (cursor->hStmt != NULL) {
+            yapiReleaseStmt(cursor->hStmt);
+            cursor->hStmt = NULL;
+        }
+        cursor->isOpen = false;
+        cursor = next;
+    }
+}
+
 static void anpFreeConnection(AnpConnection *conn)
 {
     if (conn->hConn != NULL) {
+        anpConnectionInvalidateCursors(conn);
         if (conn->hConnPool != NULL) {
             Py_BEGIN_ALLOW_THREADS
             yapiConnectionGiveBack(conn->hConn);
@@ -175,6 +225,8 @@ static PyObject *anpConnectionClose(AnpConnection *conn, PyObject *args)
     }
 
     if (conn->hConn != NULL) {
+        /* Drop Python-owned stmts before GiveBack/Disconnect frees them again. */
+        anpConnectionInvalidateCursors(conn);
         if (conn->hConnPool != NULL) {
             Py_BEGIN_ALLOW_THREADS
             yapiConnectionGiveBack(conn->hConn);

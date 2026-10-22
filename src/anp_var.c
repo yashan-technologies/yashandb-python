@@ -646,12 +646,14 @@ static PyObject *anpVarToPython(YapiConnect* hConn, AnpVar* var, uint32_t pos)
         case YAPI_TYPE_ROWID:
         case YAPI_TYPE_BIT:
         case YAPI_TYPE_YM_INTERVAL:
-            result = PyUnicode_FromString(data);
+            /* Client charset is UTF-8; use indicator length (do not scan for '\0'). */
+            result = PyUnicode_DecodeUTF8(data, (Py_ssize_t)var->indicator[pos], "strict");
             break;
 
         case YAPI_TYPE_NCHAR:
         case YAPI_TYPE_NVARCHAR:
-            result = PyUnicode_Decode(data, (Py_ssize_t)var->indicator[pos], "utf-16", "strict");
+            /* National character types use UTF-16LE in the client buffer. */
+            result = PyUnicode_Decode(data, (Py_ssize_t)var->indicator[pos], "utf-16-le", "strict");
             break;
 
         case YAPI_TYPE_DS_INTERVAL:
@@ -866,6 +868,33 @@ int anpVarSetValue(YapiConnect* hConn, AnpVar* var, uint32_t arrayPos, PyObject*
     }
 
     if (PyUnicode_Check(value)) {
+        /* National types: store UTF-16LE to match client fetch encoding. */
+        if (!anpVarIsLobType(var) &&
+            (var->dbType == YAPI_TYPE_NCHAR || var->dbType == YAPI_TYPE_NVARCHAR)) {
+            PyObject *encoded = PyUnicode_AsEncodedString(value, "utf-16-le", "strict");
+            Py_ssize_t enCodeStrSize;
+            const char *bindStr;
+            uint32_t costSize;
+
+            if (encoded == NULL) {
+                return -1;
+            }
+            enCodeStrSize = PyBytes_GET_SIZE(encoded);
+            bindStr = PyBytes_AS_STRING(encoded);
+            costSize = (uint32_t)enCodeStrSize;
+            if (costSize > var->size) {
+                if (adjustAnpVarBuffSize(var, costSize) < 0) {
+                    Py_DECREF(encoded);
+                    return -1;
+                }
+            }
+            memcpy(var->data + var->dataOffset, bindStr, (size_t)enCodeStrSize);
+            var->indicator[arrayPos] = (int32_t)enCodeStrSize;
+            var->dataOffset += costSize;
+            Py_DECREF(encoded);
+            return 0;
+        }
+
         Py_ssize_t enCodeStrSize = 0;
         const char* bindStr = PyUnicode_AsUTF8AndSize(value, &enCodeStrSize);
         if (bindStr == NULL) {
@@ -924,7 +953,44 @@ int anpVarSetValue(YapiConnect* hConn, AnpVar* var, uint32_t arrayPos, PyObject*
             return 0;
         }
 
-        uint32_t costSize = (uint32_t)byteSize;
+        /* National types: treat input bytes as UTF-8 text, store as UTF-16LE. */
+        if (var->dbType == YAPI_TYPE_NCHAR || var->dbType == YAPI_TYPE_NVARCHAR) {
+            PyObject *uni;
+            PyObject *encoded;
+            Py_ssize_t enCodeStrSize;
+            const char *bindStr;
+            uint32_t costSize;
+
+            uni = PyUnicode_DecodeUTF8(PyBytes_AS_STRING(value), byteSize, "strict");
+            if (uni == NULL) {
+                return -1;
+            }
+            encoded = PyUnicode_AsEncodedString(uni, "utf-16-le", "strict");
+            Py_DECREF(uni);
+            if (encoded == NULL) {
+                return -1;
+            }
+            enCodeStrSize = PyBytes_GET_SIZE(encoded);
+            bindStr = PyBytes_AS_STRING(encoded);
+            costSize = (uint32_t)enCodeStrSize;
+            if (costSize > var->size) {
+                if (adjustAnpVarBuffSize(var, costSize) < 0) {
+                    Py_DECREF(encoded);
+                    return -1;
+                }
+            }
+            memcpy(var->data + var->dataOffset, bindStr, (size_t)enCodeStrSize);
+            var->indicator[arrayPos] = (int32_t)enCodeStrSize;
+            var->dataOffset += costSize;
+            Py_DECREF(encoded);
+            return 0;
+        }
+
+        /* CHAR/VARCHAR text: reserve trailing '\0'; BINARY keeps raw bytes only. */
+        int isTextType = (var->dbType == YAPI_TYPE_CHAR || var->dbType == YAPI_TYPE_VARCHAR ||
+                          var->dbType == YAPI_TYPE_ROWID || var->dbType == YAPI_TYPE_BIT ||
+                          var->dbType == YAPI_TYPE_YM_INTERVAL);
+        uint32_t costSize = isTextType ? (uint32_t)(byteSize + 1) : (uint32_t)byteSize;
         if (costSize > var->size) {
             if (adjustAnpVarBuffSize(var, costSize) < 0) {
                 return -1;
@@ -932,8 +998,11 @@ int anpVarSetValue(YapiConnect* hConn, AnpVar* var, uint32_t arrayPos, PyObject*
         }
 
         memcpy(var->data + var->dataOffset, PyBytes_AS_STRING(value), byteSize);
-        var->indicator[arrayPos] = (int32_t)costSize;
+        var->indicator[arrayPos] = (int32_t)byteSize;
         var->dataOffset += costSize;
+        if (isTextType) {
+            var->data[var->dataOffset - 1] = '\0';
+        }
         return 0;
     }
     
