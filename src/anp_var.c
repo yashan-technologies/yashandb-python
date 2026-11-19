@@ -736,7 +736,7 @@ int anpBindVar(AnpVar* var, AnpCursor* cursor, PyObject* name, uint32_t pos)
     }
 
     uint32_t bindSize = var->size;
-    if ((var->elements > 1) && (var->dataOffset > 0)) {
+    if ((var->elements > 1) && (anpVarIsLobType(var) || var->dataOffset > 0)) {
         bindSize = -2;
     }
 
@@ -902,12 +902,12 @@ int anpVarSetValue(YapiConnect* hConn, AnpVar* var, uint32_t arrayPos, PyObject*
         }
 
         if (anpVarIsLobType(var)) {
-            if (yapiLobWrite(hConn, *(YapiLobLocator**)(var->data + var->dataOffset), NULL, (uint8_t*)bindStr,
+            if (yapiLobWrite(hConn, *(YapiLobLocator**)(var->data + arrayPos * sizeof(YapiLobLocator*)), NULL,
+                             (uint8_t*)bindStr,
                              (uint64_t)enCodeStrSize) != YAPI_SUCCESS) {
                 return -1;
             }
             var->indicator[arrayPos] = (int32_t)enCodeStrSize;
-            var->dataOffset += sizeof(YapiLobLocator*);
         } else {
             if (var->dbType == YAPI_TYPE_BOOL) {
                 bool* b = (bool*)var->data;
@@ -932,12 +932,11 @@ int anpVarSetValue(YapiConnect* hConn, AnpVar* var, uint32_t arrayPos, PyObject*
 
     if (PyBytes_Check(value)) {
         if (anpVarIsLobType(var)) {
-             if (yapiLobWrite(hConn, *(YapiLobLocator**)(var->data + var->dataOffset), NULL, 
+             if (yapiLobWrite(hConn, *(YapiLobLocator**)(var->data + arrayPos * sizeof(YapiLobLocator*)), NULL,
                 (uint8_t*)PyBytes_AS_STRING(value), (int)PyBytes_GET_SIZE(value)) != YAPI_SUCCESS) {
                 return -1;
              }
              var->indicator[arrayPos] = (int32_t)PyBytes_GET_SIZE(value);
-             var->dataOffset += sizeof(YapiLobLocator*);
              return 0;
         }
         if (var->dbType == YAPI_TYPE_BOOL) {
@@ -1159,12 +1158,12 @@ int anpVarSetValue(YapiConnect* hConn, AnpVar* var, uint32_t arrayPos, PyObject*
         }
 
         if (anpVarIsLobType(var)) {
-            if (yapiLobWrite(hConn, *(YapiLobLocator**)(var->data + var->dataOffset), NULL, (uint8_t*)bindStr,
+            if (yapiLobWrite(hConn, *(YapiLobLocator**)(var->data + arrayPos * sizeof(YapiLobLocator*)), NULL,
+                             (uint8_t*)bindStr,
                              (uint64_t)enCodeStrSize) != YAPI_SUCCESS) {
                 return -1;
             }
             var->indicator[arrayPos] = (int32_t)enCodeStrSize;
-            var->dataOffset += sizeof(YapiLobLocator*);
         } else {
             uint32_t costSize = (uint32_t)(enCodeStrSize + 1);
             if (costSize > var->size) {
